@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "217632775015",
+    "project_id": "famchat-6305f",
+    "storage_bucket": "famchat-6305f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:217632775015:android:b2b51450e12b0bc37bedc2",
+        "android_client_info": {
+          "package_name": "com.example.yohann_application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWytbtLRoY06SnM8DaBodCEHBPPrDgbME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

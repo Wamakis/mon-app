@@ -1,0 +1,26 @@
+name: yohann_application
+description: "FamChat."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+
+dependencies:
+  firebase_core: ^2.31.0
+  firebase_auth: ^4.6.2
+  flutter:
+    sdk: flutter
+  provider: 
+  cloud_firestore: ^4.17.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  assets:
+    - assets/logo2.png
+    - assets/logo1.png
+  uses-material-design: true
