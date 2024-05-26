@@ -2,10 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yohann_application/model/add_user_dialog.dart';
 import 'package:yohann_application/screens/chat_page.dart';
 import 'package:yohann_application/services/auth_service.dart';
 import 'package:yohann_application/services/friend_service.dart';
-import 'package:yohann_application/model/add_user_dialog.dart'; // Ajoutez cette ligne
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -26,8 +26,13 @@ class _HomePageState extends State<HomePage> {
     sendFriendRequest(_auth.currentUser!.uid, friendUserId);
   }
 
-  void _refreshPage() {
-    setState(() {});
+  void _openFriendRequestsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return FriendRequestsDialog(currentUserId: _auth.currentUser!.uid);
+      },
+    );
   }
 
   @override
@@ -36,7 +41,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: Text(
-          'Message',
+          'Mes Amis',
           style: TextStyle(color: Colors.white),
         ),
         actions: [
@@ -45,18 +50,15 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.logout),
           ),
           IconButton(
-            onPressed: _refreshPage,
-            icon: const Icon(Icons.refresh),
+            onPressed: _openFriendRequestsDialog,
+            icon: const Icon(Icons.person_add),
           ),
         ],
         centerTitle: true,
       ),
       body: Column(
         children: [
-          Expanded(child: _buildUserList()),
-          Expanded(
-              child:
-                  _buildFriendRequests()), // Ajoutez cette ligne pour afficher les demandes d'amis
+          Expanded(child: _buildFriendsList()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -76,29 +78,35 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildUserList() {
+  Widget _buildFriendsList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(_auth.currentUser!.uid)
+          .collection('friends')
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Text('Erreur');
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text('Chargement...');
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.data!.docs.isEmpty) {
+          return const Center(
+              child: Text('Aucun ami dans votre liste d\'amis.'));
         }
 
         return ListView(
           children: snapshot.data!.docs.map<Widget>((doc) {
             Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
-            if (_auth.currentUser!.uid != data['uid']) {
-              return ListTile(
-                title: Text(data['email']),
-                trailing: IconButton(
-                  icon: Icon(Icons.person_add),
-                  onPressed: () => _sendFriendRequest(data['uid']),
-                ),
-                onTap: () {
+            return ListTile(
+              title: Text(data['username']),
+              trailing: IconButton(
+                icon: Icon(Icons.chat),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -109,48 +117,71 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 },
-              );
-            } else {
-              return Container();
-            }
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildFriendRequests() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('friend_requests')
-          .where('to', isEqualTo: _auth.currentUser!.uid)
-          .where('status', isEqualTo: 'pending')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Text('Erreur');
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text('Chargement...');
-        }
-
-        return ListView(
-          children: snapshot.data!.docs.map<Widget>((doc) {
-            Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
-            return ListTile(
-              title: Text('Demande d\'ami de ${data['from']}'),
-              trailing: IconButton(
-                icon: Icon(Icons.check),
-                onPressed: () {
-                  acceptFriendRequest(
-                      doc.id, _auth.currentUser!.uid, data['from']);
-                },
               ),
             );
           }).toList(),
         );
       },
+    );
+  }
+}
+
+class FriendRequestsDialog extends StatelessWidget {
+  final String currentUserId;
+
+  const FriendRequestsDialog({Key? key, required this.currentUserId})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Demandes d\'amis'),
+      content: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('friend_requests')
+            .where('to', isEqualTo: currentUserId)
+            .where('status', isEqualTo: 'pending')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text('Erreur');
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.data!.docs.isEmpty) {
+            return const Text('Aucune demande d\'ami en attente.');
+          }
+
+          return ListView(
+            children: snapshot.data!.docs.map<Widget>((doc) {
+              Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
+              return ListTile(
+                trailing: IconButton(
+                  icon: Icon(Icons.check),
+                  onPressed: () {
+                    acceptFriendRequest(
+                      doc.id,
+                      currentUserId,
+                      data['from'],
+                      data['from_username'],
+                    );
+                    Navigator.of(context).pop();
+                  },
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Fermer'),
+        ),
+      ],
     );
   }
 }

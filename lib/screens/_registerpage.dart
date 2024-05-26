@@ -1,8 +1,10 @@
-import "package:flutter/material.dart";
-import "package:provider/provider.dart";
-import "package:yohann_application/composants/_loginbutton.dart";
-import "package:yohann_application/composants/_loginfield.dart";
-import "package:yohann_application/services/auth_service.dart";
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:yohann_application/composants/_loginbutton.dart';
+import 'package:yohann_application/composants/_loginfield.dart';
+import 'package:yohann_application/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Ajoutez cette ligne
 
 class registerPage extends StatefulWidget {
   final void Function()? onTap;
@@ -16,6 +18,8 @@ class _registerPageState extends State<registerPage> {
   final emailText = TextEditingController();
   final passwordText = TextEditingController();
   final confirmpasswordText = TextEditingController();
+  final usernameText =
+      TextEditingController(); // Ajoutez cette ligne pour le nom d'utilisateur
 
   void register() async {
     if (passwordText.text != confirmpasswordText.text) {
@@ -28,8 +32,20 @@ class _registerPageState extends State<registerPage> {
     final authService = Provider.of<AuthService>(context, listen: false);
 
     try {
-      await authService.createUserWithEmailPassword(
-          emailText.text, passwordText.text);
+      UserCredential userCredential = await authService
+          .createUserWithEmailPassword(emailText.text, passwordText.text);
+
+      // Ajouter le nom d'utilisateur à la base de données
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'email': emailText.text,
+        'username': usernameText.text, // Ajoutez le nom d'utilisateur
+        'uid': userCredential.user!.uid,
+      });
+
+      // Afficher un message de succès ou naviguer vers une autre page
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,6 +81,11 @@ class _registerPageState extends State<registerPage> {
                 ),
                 SizedBox(height: 20),
                 MyLoginField(
+                    controller: usernameText, // Champ pour le nom d'utilisateur
+                    hintText: "Nom d'utilisateur",
+                    obscureText: false),
+                SizedBox(height: 20),
+                MyLoginField(
                     controller: emailText,
                     hintText: "Email",
                     obscureText: false),
@@ -73,31 +94,31 @@ class _registerPageState extends State<registerPage> {
                 ),
                 MyLoginField(
                     controller: passwordText,
-                    hintText: "Password",
+                    hintText: "Mot de passe",
                     obscureText: true),
                 SizedBox(
                   height: 20,
                 ),
                 MyLoginField(
                     controller: confirmpasswordText,
-                    hintText: "Confirm Password",
+                    hintText: "Confirmer le mot de passe",
                     obscureText: true),
                 SizedBox(
                   height: 30,
                 ),
-                MyloginButton(onTap: () => register(), text: "Creer le compte"),
+                MyloginButton(onTap: () => register(), text: "Créer le compte"),
                 SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Vous avez deja un compte?"),
+                    Text("Vous avez déjà un compte?"),
                     SizedBox(
                       width: 5,
                     ),
                     GestureDetector(
                       onTap: widget.onTap,
                       child: Text(
-                        "Connectez votre compte !",
+                        "Connectez-vous!",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     )
