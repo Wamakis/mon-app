@@ -5,8 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AddUserDialog extends StatefulWidget {
   final Function(String) onUserSelected;
 
-  const AddUserDialog({required this.onUserSelected, Key? key})
-      : super(key: key);
+  const AddUserDialog({required this.onUserSelected, Key? key}) : super(key: key);
 
   @override
   _AddUserDialogState createState() => _AddUserDialogState();

@@ -3,15 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yohann_application/model/add_user_dialog.dart';
-import 'package:yohann_application/screens/chat_page.dart';
-import 'package:yohann_application/services/auth_service.dart';
-import 'package:yohann_application/services/friend_service.dart';
+import 'chat_page.dart';
+import '../services/auth_service.dart';
+import '../services/friend_service.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
-
   @override
-  State<HomePage> createState() => _HomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
@@ -30,7 +28,10 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return FriendRequestsDialog(currentUserId: _auth.currentUser!.uid);
+        return FriendRequestsDialog(
+          currentUserId: _auth.currentUser!.uid,
+          currentUserEmail: _auth.currentUser!.email!,
+        );
       },
     );
   }
@@ -62,7 +63,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddUserDialog(),
+        onPressed: _openAddUserDialog,
         child: Icon(Icons.add),
         backgroundColor: Colors.black,
       ),
@@ -100,7 +101,7 @@ class _HomePageState extends State<HomePage> {
         }
 
         return ListView(
-          children: snapshot.data!.docs.map<Widget>((doc) {
+          children: snapshot.data!.docs.map((doc) {
             Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
             return ListTile(
               title: Text(data['username']),
@@ -128,9 +129,13 @@ class _HomePageState extends State<HomePage> {
 
 class FriendRequestsDialog extends StatelessWidget {
   final String currentUserId;
+  final String currentUserEmail;
 
-  const FriendRequestsDialog({Key? key, required this.currentUserId})
-      : super(key: key);
+  const FriendRequestsDialog({
+    Key? key,
+    required this.currentUserId,
+    required this.currentUserEmail,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -152,24 +157,56 @@ class FriendRequestsDialog extends StatelessWidget {
           }
 
           if (snapshot.data!.docs.isEmpty) {
-            return const Text('Aucune demande d\'ami en attente.');
+            return const Center(child: Text('Aucune demande d\'ami.'));
           }
 
           return ListView(
-            children: snapshot.data!.docs.map<Widget>((doc) {
+            children: snapshot.data!.docs.map((doc) {
               Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
               return ListTile(
-                trailing: IconButton(
-                  icon: Icon(Icons.check),
-                  onPressed: () {
-                    acceptFriendRequest(
-                      doc.id,
-                      currentUserId,
-                      data['from'],
-                      data['from_username'],
-                    );
-                    Navigator.of(context).pop();
-                  },
+                title: Text(data['fromEmail']),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.check),
+                      onPressed: () {
+                        FirebaseFirestore.instance
+                            .runTransaction((transaction) async {
+                          DocumentSnapshot snapshot =
+                              await transaction.get(doc.reference);
+                          if (snapshot.exists) {
+                            transaction
+                                .update(doc.reference, {'status': 'accepted'});
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(currentUserId)
+                                .collection('friends')
+                                .doc(data['from'])
+                                .set({
+                              'uid': data['from'],
+                              'email': data['fromEmail']
+                            });
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(data['from'])
+                                .collection('friends')
+                                .doc(currentUserId)
+                                .set({
+                              'uid': currentUserId,
+                              'email': currentUserEmail
+                            });
+                          }
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () {
+                        doc.reference.delete();
+                      },
+                    ),
+                  ],
                 ),
               );
             }).toList(),
@@ -178,8 +215,10 @@ class FriendRequestsDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
           child: Text('Fermer'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
         ),
       ],
     );
