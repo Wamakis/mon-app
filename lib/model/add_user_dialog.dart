@@ -5,7 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AddUserDialog extends StatefulWidget {
   final Function(String) onUserSelected;
 
-  const AddUserDialog({required this.onUserSelected, Key? key}) : super(key: key);
+  const AddUserDialog({required this.onUserSelected, Key? key})
+      : super(key: key);
 
   @override
   _AddUserDialogState createState() => _AddUserDialogState();
@@ -35,13 +36,17 @@ class _AddUserDialogState extends State<AddUserDialog> {
               children: snapshot.data!.docs.map<Widget>((doc) {
                 Map<String, dynamic> data = doc.data()! as Map<String, dynamic>;
                 if (_auth.currentUser!.uid != data['uid']) {
-                  return ListTile(
-                    title: Text(data['email']),
-                    onTap: () {
-                      widget.onUserSelected(data['uid']);
-                      Navigator.of(context).pop();
-                    },
-                  );
+                  if (data['username'] == null) {
+                    return Container();
+                  } else {
+                    return ListTile(
+                      title: Text(data['username'].toString()),
+                      onTap: () {
+                        widget.onUserSelected(data['uid']);
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }
                 } else {
                   return Container();
                 }

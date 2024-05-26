@@ -7,6 +7,7 @@ Future<void> sendFriendRequest(
       .doc(friendUserId)
       .get();
   var friendData = friendSnapshot.data()!;
+  // ignore: unused_local_variable
   var friendUsername = friendData['username'];
 
   await FirebaseFirestore.instance.collection('friend_requests').add({
